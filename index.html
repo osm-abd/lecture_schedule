@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbfbfc">
+<title>Class Schedule</title>
+<style>
+  :root {
+    --grid-line: rgba(22, 24, 30, .045);
+    --grid-size: 26px;
+    --paper: #ffffff;
+    --ink: #17181c;
+    --ink-soft: #6b6d76;
+    --ink-faint: #9a9ca4;
+    --radius-lg: 26px;
+    --radius-md: 16px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 20px 16px calc(40px + env(safe-area-inset-bottom));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background-color: #fbfbfc;
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    background-position: center top;
+  }
+
+  .sheet {
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--paper);
+    border-radius: var(--radius-lg);
+    border: 1px solid #eeeff2;
+    box-shadow: 0 1px 2px rgba(20, 22, 28, .04), 0 12px 32px -12px rgba(20, 22, 28, .12);
+    padding: 22px 16px 24px;
+  }
+
+  header { text-align: center; margin-bottom: 18px; }
+
+  h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
+
+  .today-label { margin-top: 5px; font-size: 12.5px; color: var(--ink-faint); }
+
+  /* ---- day picker ---- */
+  .days {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 6px;
+    background: #f4f4f6;
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 20px;
+    min-height: 44px;
+  }
+
+  .day {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+    padding: 9px 0 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+
+  .day:hover { color: var(--ink); }
+
+  .day[aria-selected="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(20, 22, 28, .10), 0 2px 8px -2px rgba(20, 22, 28, .10);
+  }
+
+  .day .dot {
+    display: block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--ink);
+    margin: 4px auto -8px;
+    opacity: 0;
+  }
+
+  .day.is-today .dot { opacity: .45; }
+
+  .day:focus-visible { outline: 2px solid #17181c; outline-offset: 2px; }
+
+  /* ---- class cards ---- */
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 14px 15px 14px 18px;
+    border-radius: var(--radius-md);
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    overflow: hidden;
+    animation: rise .34s cubic-bezier(.22, .68, .35, 1) backwards;
+    animation-delay: var(--i);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--c-accent);
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .name {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 620;
+    letter-spacing: -.01em;
+    color: var(--c-ink);
+    line-height: 1.25;
+  }
+
+  .room {
+    flex: none;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: var(--c-ink);
+    background: var(--c-chip);
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-faint); }
+
+  /* ---- states ---- */
+  .notice {
+    text-align: center;
+    padding: 40px 12px;
+    color: var(--ink-faint);
+    font-size: 14px;
+    line-height: 1.55;
+    animation: rise .34s cubic-bezier(.22, .68, .35, 1);
+  }
+
+  .notice .mark { display: block; font-size: 26px; margin-bottom: 8px; opacity: .55; }
+  .notice strong { display: block; color: var(--ink-soft); font-weight: 600; margin-bottom: 4px; }
+  .notice code { font-size: 12px; word-break: break-word; }
+
+  .retry {
+    appearance: none;
+    margin-top: 14px;
+    border: 1px solid #e3e4e8;
+    background: var(--paper);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .retry:hover { background: #f7f7f9; }
+
+  .skeleton {
+    height: 82px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(100deg, #f3f3f5 30%, #eaeaee 50%, #f3f3f5 70%);
+    background-size: 220% 100%;
+    animation: sweep 1.3s linear infinite;
+  }
+
+  @keyframes sweep {
+    from { background-position: 180% 0; }
+    to   { background-position: -80% 0; }
+  }
+
+  .skeleton:nth-child(2) { opacity: .75; }
+  .skeleton:nth-child(3) { opacity: .5; }
+
+  .stale {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  footer {
+    max-width: 480px;
+    margin: 14px auto 0;
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  @media (min-width: 560px) {
+    body { padding-top: 44px; }
+    .sheet { padding: 28px 24px 30px; }
+    h1 { font-size: 21px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .notice, .skeleton { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<main class="sheet">
+  <header>
+    <h1>Class Schedule</h1>
+    <p class="today-label" id="todayLabel"></p>
+  </header>
+
+  <div class="days" id="days" role="tablist" aria-label="Pick a day"></div>
+
+  <div class="cards" id="cards" aria-live="polite">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+
+  <p class="stale" id="stale" hidden></p>
+</main>
+
+<footer id="footer"></footer>
+
+<script>
+/* ------------------------------------------------------------------
+   The schedule is read live from the Google Sheet through the Apps
+   Script web app in Code.gs.
+
+   Paste the deployment's /exec URL here — it looks like:
+   https://script.google.com/macros/s/AKfycb.../exec
+   ------------------------------------------------------------------ */
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwSsO5Tts3GsS1xve936Eh7K1MwZ_LLKkMtSCpWqntVjVRcieYGeGZRmS_CYA6Rdyo/exec";
+
+const CACHE_KEY = "class-schedule-cache-v1";
+
+/* Colors are generated, not assigned by hand: each distinct class name gets
+   the next hue in this list the first time it appears in the schedule. */
+const HUES = [252, 205, 35, 160, 335, 185, 15, 285, 95, 225];
+
+const FALLBACK_DAY_ORDER = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+let state = { data: null, selected: null, colors: {} };
+
+/* ---------------- colors ---------------- */
+
+function buildColors(data) {
+  const colors = {};
+  let n = 0;
+  data.days.forEach(day => {
+    day.cells.forEach(cell => {
+      if (!cell || colors[cell.name]) return;
+      const h = HUES[n % HUES.length];
+      // widen the spread once the hue list wraps, so class 11 ≠ class 1
+      const shift = Math.floor(n / HUES.length) * 12;
+      const hue = (h + shift) % 360;
+      colors[cell.name] = {
+        accent: `hsl(${hue} 62% 52%)`,
+        bg:     `hsl(${hue} 72% 97%)`,
+        border: `hsl(${hue} 52% 90%)`,
+        chip:   `hsl(${hue} 58% 91%)`,
+        ink:    `hsl(${hue} 66% 30%)`
+      };
+      n++;
+    });
+  });
+  return colors;
+}
+
+/* ---------------- schedule shaping ---------------- */
+
+// Merge repeated adjacent cells into single blocks.
+function blocksFor(day) {
+  const hours = state.data.hours;
+  const out = [];
+
+  day.cells.forEach((cell, i) => {
+    if (!cell) return;
+    const prev = out[out.length - 1];
+    const sameClass = prev && prev.name === cell.name && prev.room === cell.room;
+    const contiguous = prev && prev.endIndex === i - 1 && hours[i] === hours[i - 1] + 1;
+    if (sameClass && contiguous) {
+      prev.endIndex = i;
+      prev.hours += 1;
+      return;
+    }
+    out.push({ name: cell.name, room: cell.room, startIndex: i, endIndex: i, hours: 1 });
+  });
+
+  return out;
+}
+
+function fmt(h) {
+  const hour24 = ((h % 24) + 24) % 24;
+  const suffix = hour24 < 12 ? "AM" : "PM";
+  const hour = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return hour + ":00 " + suffix;
+}
+
+/* ---------------- rendering ---------------- */
+
+const cardsEl = document.getElementById("cards");
+
+function notice(html) {
+  cardsEl.innerHTML = '<div class="notice">' + html + "</div>";
+}
+
+function renderCards(dayKey) {
+  const day = state.data.days.find(d => d.key === dayKey);
+  if (!day) return;
+
+  const blocks = blocksFor(day);
+  cardsEl.innerHTML = "";
+
+  if (!blocks.length) {
+    notice('<span class="mark">○</span>No classes on ' + esc(day.label) + ".");
+    return;
+  }
+
+  blocks.forEach((b, idx) => {
+    const c = state.colors[b.name];
+    const start = state.data.hours[b.startIndex];
+    const end = state.data.hours[b.endIndex] + 1;
+
+    const el = document.createElement("article");
+    el.className = "card";
+    el.style.cssText =
+      `--c-accent:${c.accent};--c-bg:${c.bg};--c-border:${c.border};` +
+      `--c-chip:${c.chip};--c-ink:${c.ink};--i:${idx * 45}ms`;
+
+    const top = document.createElement("div");
+    top.className = "card-top";
+
+    const name = document.createElement("h2");
+    name.className = "name";
+    name.textContent = b.name;
+    top.appendChild(name);
+
+    if (b.room) {
+      const room = document.createElement("span");
+      room.className = "room";
+      room.textContent = b.room;
+      top.appendChild(room);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const time = document.createElement("span");
+    time.textContent = fmt(start) + " – " + fmt(end);
+    const sep = document.createElement("span");
+    sep.className = "sep";
+    const dur = document.createElement("span");
+    dur.textContent = b.hours + (b.hours === 1 ? " hour" : " hours");
+    meta.append(time, sep, dur);
+
+    el.append(top, meta);
+    cardsEl.appendChild(el);
+  });
+}
+
+function select(dayKey) {
+  state.selected = dayKey;
+  document.querySelectorAll(".day").forEach(btn => {
+    const on = btn.dataset.day === dayKey;
+    btn.setAttribute("aria-selected", String(on));
+    btn.tabIndex = on ? 0 : -1;
+  });
+  renderCards(dayKey);
+}
+
+function todayKeyIn(days) {
+  const prefix = FALLBACK_DAY_ORDER[new Date().getDay()];
+  const match = days.find(d => d.key.toLowerCase().slice(0, 3) === prefix);
+  return match ? match.key : null;
+}
+
+function renderPicker() {
+  const picker = document.getElementById("days");
+  const today = todayKeyIn(state.data.days);
+  picker.innerHTML = "";
+
+  state.data.days.forEach(day => {
+    const btn = document.createElement("button");
+    btn.className = "day" + (day.key === today ? " is-today" : "");
+    btn.type = "button";
+    btn.setAttribute("role", "tab");
+    btn.dataset.day = day.key;
+    btn.textContent = day.key;
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    btn.appendChild(dot);
+    btn.addEventListener("click", () => select(day.key));
+    picker.appendChild(btn);
+  });
+
+  document.getElementById("footer").textContent =
+    today ? "" : "Nothing scheduled today — showing " + state.data.days[0].label + ".";
+
+  return today || state.data.days[0].key;
+}
+
+function apply(data, opts) {
+  state.data = data;
+  state.colors = buildColors(data);
+
+  const keepSelection = state.selected && data.days.some(d => d.key === state.selected);
+  const fallback = renderPicker();
+  select(keepSelection ? state.selected : fallback);
+
+  const stale = document.getElementById("stale");
+  if (opts && opts.stale) {
+    stale.hidden = false;
+    stale.textContent = "Offline — showing the last saved copy.";
+  } else {
+    stale.hidden = true;
+  }
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, ch =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+
+/* ---------------- loading ---------------- */
+
+function validate(data) {
+  return data
+    && Array.isArray(data.hours) && data.hours.length
+    && Array.isArray(data.days) && data.days.length
+    && data.days.every(d => d && typeof d.key === "string" && Array.isArray(d.cells));
+}
+
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return validate(data) ? data : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch (e) {
+    // storage full or blocked — the page works fine without it
+  }
+}
+
+function showError(message, hadCache) {
+  if (hadCache) {
+    const stale = document.getElementById("stale");
+    stale.hidden = false;
+    stale.textContent = "Couldn't reach the sheet — showing the last saved copy.";
+    return;
+  }
+
+  notice(
+    '<span class="mark">⚠</span>' +
+    "<strong>Couldn't load the schedule</strong>" +
+    esc(message) +
+    '<br><button class="retry" type="button" id="retryBtn">Try again</button>'
+  );
+  document.getElementById("retryBtn").addEventListener("click", () => load(true));
+}
+
+let loading = false;
+
+async function load(force) {
+  if (loading) return;
+  loading = true;
+
+  const cached = readCache();
+  if (cached && !state.data) apply(cached, { stale: true });
+
+  if (!ENDPOINT || ENDPOINT.indexOf("PASTE_") === 0) {
+    loading = false;
+    showError("Paste your Apps Script web app URL into ENDPOINT in index.html.", !!cached);
+    return;
+  }
+
+  try {
+    const url = ENDPOINT + (ENDPOINT.indexOf("?") === -1 ? "?" : "&") +
+                (force ? "fresh=1&" : "") + "t=" + Date.now();
+    const res = await fetch(url, { redirect: "follow", cache: "no-store" });
+    if (!res.ok) throw new Error("The sheet responded with " + res.status + ".");
+
+    const data = await res.json();
+    if (data && data.error) throw new Error(data.error);
+    if (!validate(data)) throw new Error("The sheet returned an unexpected shape.");
+
+    writeCache(data);
+    apply(data, { stale: false });
+  } catch (err) {
+    showError(err && err.message ? err.message : String(err), !!state.data);
+  } finally {
+    loading = false;
+  }
+}
+
+/* ---------------- boot ---------------- */
+
+document.getElementById("todayLabel").textContent =
+  new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+document.getElementById("days").addEventListener("keydown", e => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const keys = state.data ? state.data.days.map(d => d.key) : [];
+  if (keys.length < 2) return;
+  const current = keys.indexOf(state.selected);
+  const next = (current + (e.key === "ArrowRight" ? 1 : keys.length - 1)) % keys.length;
+  select(keys[next]);
+  document.querySelector('.day[aria-selected="true"]').focus();
+  e.preventDefault();
+});
+
+// Pick up sheet edits when the page comes back into view.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") load(false);
+});
+
+load(false);
+</script>
+</body>
+</html>
